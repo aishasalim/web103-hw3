@@ -1,41 +1,124 @@
-// App.jsx
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import { Container, Typography, FormControl, InputLabel, Select, MenuItem, Button, Checkbox, ListItemText, Box, Grid } from '@mui/material';
 import axios from 'axios';
-import './App.css';
-import TopBar from './TopBar'; 
+import TopBar from './TopBar';
 
 const App = () => {
-  const [data, setData] = useState([]);
+  const [ingredients, setIngredients] = useState([]);
+  const [selectedIngredients, setSelectedIngredients] = useState([]);
+  const [pizzaName, setPizzaName] = useState('');
+  const [finalPrice, setFinalPrice] = useState(5.00); // Initial price
 
+  // Fetch ingredients from the API
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchIngredients = async () => {
       try {
-        const response = await axios.get('http://localhost:5001/api/locations'); 
-        setData(response.data);
-        console.log(response.data);
+        const response = await axios.get('http://localhost:5001/api/ingredients'); // Adjust the endpoint as necessary
+        setIngredients(response.data);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching ingredients:', error);
       }
     };
-    fetchData();
+
+    fetchIngredients();
   }, []);
 
+// Handle ingredient selection
+const handleIngredientChange = (event) => {
+  const { target: { value } } = event;
+  setSelectedIngredients(value);
+
+  // Calculate the final price based on selected ingredients
+  const totalIngredientCost = ingredients
+    .filter(ingredient => value.includes(ingredient.name))
+    .reduce((total, ingredient) => total + parseFloat(ingredient.cost) || 0, 0);
+  
+  // Add base price (5.00) to the total
+  setFinalPrice(5.00 + totalIngredientCost); // Ensure base price is included
+};
+
+// Submit the pizza customization
+const handleSubmit = async (event) => {
+  event.preventDefault();
+  try {
+    const response = await axios.post('http://localhost:5001/api/custom-pizza', {
+      name: pizzaName,
+      ingredient_names: selectedIngredients,
+      final_price: 5.00 + finalPrice, // Make sure to include final price here if necessary
+    });
+    console.log('Custom pizza created:', response.data);
+    // Reset form fields after successful submission
+    setPizzaName('');
+    setSelectedIngredients([]);
+    setFinalPrice(5.00); // Reset to initial price
+  } catch (error) {
+    console.error('Error creating custom pizza:', error);
+  }
+};
+
+
+  // Group ingredients by type
+  const ingredientTypes = [...new Set(ingredients.map(ingredient => ingredient.type))];
+
   return (
-    <div>
+    <Container>
       <TopBar />
-      <ul>
-        {data.map(item => (
-          <Link key={item.id} to={`/location/${item.id}`} className="card">
-          <li>
-            <strong>{item.name}</strong>
-            <br /><br />
-            {item.address}
-          </li>
-          </Link>
-        ))}
-      </ul>
-    </div>
+
+      <Box textAlign="center" marginBottom={4}>
+        <img 
+          src="/pizza.png" // Update the path based on your file structure
+          alt="Pizza"
+          style={{ marginTop:"70px", width: '300px', height: 'auto' }} // Adjust the width as necessary
+        />
+      </Box>
+
+      <Typography variant="h4" gutterBottom textAlign="center">
+        Customize Your Pizza
+      </Typography>
+
+      <form onSubmit={handleSubmit}>
+        <FormControl fullWidth margin="normal">
+          <input
+            type="text"
+            value={pizzaName}
+            onChange={(e) => setPizzaName(e.target.value)}
+            placeholder="Enter your pizza name"
+            style={{ width: '250px', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
+          />
+        </FormControl>
+        
+        <Grid container spacing={2}>
+          {ingredientTypes.map((type) => (
+            <Grid item xs={6} key={type}>  {/* 2 items per row (6/12 = 50%) */}
+              <FormControl fullWidth margin="normal">
+                <InputLabel id={`${type}-select-label`}>Select {type}</InputLabel>
+                <Select
+                  labelId={`${type}-select-label`}
+                  multiple
+                  value={selectedIngredients}
+                  onChange={handleIngredientChange}
+                  renderValue={(selected) => selected.join(', ')}
+                >
+                  {ingredients.filter(ingredient => ingredient.type === type).map((ingredient) => (
+                    <MenuItem key={ingredient.id} value={ingredient.name}>
+                      <Checkbox checked={selectedIngredients.indexOf(ingredient.name) > -1} />
+                      <ListItemText primary={ingredient.name} />
+                      <span style={{ marginLeft: 'auto' }}>${ingredient.cost}</span>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          ))}
+        </Grid>
+
+        <Typography variant="h6">Final Price: ${finalPrice.toFixed(2)}</Typography>
+
+        <Button type="submit" variant="contained" color="primary" style={{ marginTop: '20px' }}>
+          Submit Custom Pizza
+        </Button>
+      </form>
+    </Container>
   );
 };
 

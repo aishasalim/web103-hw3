@@ -2,20 +2,21 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'; // Ensure this is imported
 import App from './App.jsx';
-import LocationDetails from './LocationDetails.jsx'; // Existing component
-import AllEvents from './AllEvents.jsx'; // Import the new component
-import './index.css';
+import CustomItems from './customItems.jsx';
+import { ThemeProvider } from '@mui/material/styles';
+import theme from './theme';
 
 const root = createRoot(document.getElementById('root'));
 
 root.render(
+  <ThemeProvider theme={theme}>
   <StrictMode>
     <Router>
       <Routes>
-        <Route path="/" element={<App />} /> {/* Main page with locations */}
-        <Route path="/location/:id" element={<LocationDetails />} /> {/* Details for specific location */}
-        <Route path="/events" element={<AllEvents />} /> {/* New route for all events */}
+        <Route path="/" element={<App />} /> 
+        <Route path="/customitems" element={<CustomItems />} /> 
       </Routes>
     </Router>
   </StrictMode>,
+  </ThemeProvider>
 );
