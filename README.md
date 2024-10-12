@@ -27,3 +27,7 @@ The following **required** functionality is completed:
 
 Here's a walkthrough of implemented required features:
 
+
+https://github.com/user-attachments/assets/a1fa5a10-ec8a-4b1f-a4e4-746f06c07be6
+
+
