@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   Typography,
-  Button,
   Container,
   Grid,
   Card,
   CardContent,
   List,
   ListItem,
+  Button,
   Box,
   IconButton,
   Menu,
@@ -25,27 +25,26 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 import TopBar from './TopBar';
+import { useNavigate } from 'react-router-dom';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 const CustomItems = () => {
   const [customPizzas, setCustomPizzas] = useState([]);
-  const [ingredients, setIngredients] = useState([]); // State for all ingredients
+  const [ingredients, setIngredients] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [selectedPizzaId, setSelectedPizzaId] = useState(null);
+  const [selectedPizza, setSelectedPizza] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
-  const [selectedIngredients, setSelectedIngredients] = useState([]); // For ingredient selection in edit dialog
-  const [finalPrice, setFinalPrice] = useState(5.0); // Base price
+  const [selectedIngredients, setSelectedIngredients] = useState([]);
+  const [finalPrice, setFinalPrice] = useState(5.0);
+  const navigate = useNavigate();
 
-  // Fetch custom pizzas and ingredients from the API
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch custom pizzas
         const pizzasResponse = await axios.get('http://localhost:5001/api/custom-pizzas');
         setCustomPizzas(pizzasResponse.data);
 
-        // Fetch ingredients
         const ingredientsResponse = await axios.get('http://localhost:5001/api/ingredients');
         setIngredients(ingredientsResponse.data);
       } catch (error) {
@@ -56,36 +55,31 @@ const CustomItems = () => {
     fetchData();
   }, []);
 
-  // Handle menu opening
-  const handleClick = (event, pizzaId) => {
+  const handleClick = (event, pizza) => {
+    event.stopPropagation();
     setAnchorEl(event.currentTarget);
-    setSelectedPizzaId(pizzaId);
+    setSelectedPizza(pizza);
   };
 
-  // Handle menu closing
   const handleMenuClose = () => {
     setAnchorEl(null);
-    // Do not reset selectedPizzaId here
   };
 
-  // Handle dialog closing
   const handleDialogClose = () => {
     setIsEditing(false);
-    setSelectedPizzaId(null); // Reset after editing is done
-    setFinalPrice(5.0); // Reset price
+    setFinalPrice(5.0);
+    // Do not reset selectedPizza here; we need it during submission
   };
 
-  // Handle edit action
-  const handleEdit = (pizza) => {
-    setSelectedPizzaId(pizza.id); // Set the selected pizza ID
-    setEditName(pizza.name);
-    setSelectedIngredients(pizza.ingredient_names || []);
-    calculateFinalPrice(pizza.ingredient_names || []); // Calculate price based on current ingredients
+  const handleEdit = () => {
+    if (!selectedPizza) return;
+    setEditName(selectedPizza.name);
+    setSelectedIngredients(selectedPizza.ingredient_names || []);
+    calculateFinalPrice(selectedPizza.ingredient_names || []);
     setIsEditing(true);
-    handleMenuClose(); // Close the menu
+    handleMenuClose();
   };
 
-  // Handle ingredient selection in edit dialog
   const handleIngredientChange = (event) => {
     const {
       target: { value },
@@ -94,58 +88,61 @@ const CustomItems = () => {
     calculateFinalPrice(value);
   };
 
-  // Calculate final price based on selected ingredients
   const calculateFinalPrice = (selectedIngredientNames) => {
     const totalIngredientCost = ingredients
       .filter((ingredient) => selectedIngredientNames.includes(ingredient.name))
       .reduce((total, ingredient) => total + parseFloat(ingredient.cost) || 0, 0);
 
-    // Base price is $5.00
     setFinalPrice(5.0 + totalIngredientCost);
   };
 
   const handleEditSubmit = async (event) => {
     event.preventDefault();
 
+    console.log('Selected Pizza:', selectedPizza);
+
     if (!editName.trim()) {
       alert('Pizza name cannot be empty.');
       return;
     }
 
+    if (!selectedPizza) {
+      alert('No pizza selected for editing.');
+      return;
+    }
+
     try {
       const response = await axios.put(
-        `http://localhost:5001/api/custom-pizza/${selectedPizzaId}`,
+        `http://localhost:5001/api/custom-pizza/${selectedPizza.id}`,
         {
           name: editName,
           ingredient_names: selectedIngredients,
-          final_price: finalPrice,
         }
       );
       setCustomPizzas(
         customPizzas.map((pizza) =>
-          pizza.id === selectedPizzaId ? response.data.customPizza : pizza
+          pizza.id === selectedPizza.id ? response.data.customPizza : pizza
         )
       );
-      handleDialogClose(); // Close dialog after submission
+      handleDialogClose();
+      setSelectedPizza(null); // Reset after submission is complete
     } catch (error) {
       console.error('Error updating pizza:', error);
+      alert('Failed to update pizza. Please try again.');
     }
   };
 
-  // Handle delete action
-  const handleDelete = async (pizzaId) => {
+  const handleDelete = async () => {
+    if (!selectedPizza) return;
     try {
-      await axios.delete(`http://localhost:5001/api/custom-pizza/${pizzaId}`);
-      setCustomPizzas(customPizzas.filter((pizza) => pizza.id !== pizzaId));
+      await axios.delete(`http://localhost:5001/api/custom-pizza/${selectedPizza.id}`);
+      setCustomPizzas(customPizzas.filter((pizza) => pizza.id !== selectedPizza.id));
       handleMenuClose();
-      setSelectedPizzaId(null); // Reset after deletion
+      setSelectedPizza(null);
     } catch (error) {
       console.error('Error deleting pizza:', error);
     }
   };
-
-  // Group ingredients by type (optional, if you want to categorize them)
-  const ingredientTypes = [...new Set(ingredients.map((ingredient) => ingredient.type))];
 
   return (
     <>
@@ -166,6 +163,7 @@ const CustomItems = () => {
               key={pizza.id}
             >
               <Card
+                onClick={() => navigate(`/itemdetail/${pizza.id}`)}
                 sx={{
                   transition: 'transform 0.3s ease',
                   '&:hover': {
@@ -176,20 +174,11 @@ const CustomItems = () => {
                 }}
               >
                 <IconButton
-                  onClick={(event) => handleClick(event, pizza.id)}
+                  onClick={(event) => handleClick(event, pizza)}
                   sx={{ position: 'absolute', top: 10, right: 10 }}
                 >
                   <MoreVertIcon />
                 </IconButton>
-
-                <Menu
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl)}
-                  onClose={handleMenuClose}
-                >
-                  <MenuItem onClick={() => handleEdit(pizza)}>Edit</MenuItem>
-                  <MenuItem onClick={() => handleDelete(pizza.id)}>Delete</MenuItem>
-                </Menu>
 
                 <CardContent>
                   <Typography variant="h5">
@@ -217,7 +206,7 @@ const CustomItems = () => {
                     </Grid>
                   </List>
                   <Typography variant="h6">
-                    Price: ${(parseFloat(pizza.final_price) + 5.00).toFixed(2)}
+                    Price: ${parseFloat(pizza.final_price).toFixed(2)}
                   </Typography>
                 </CardContent>
               </Card>
@@ -225,6 +214,31 @@ const CustomItems = () => {
           ))}
         </Grid>
 
+        {/* Move Menu outside the map */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+        >
+          <MenuItem
+            onClick={(event) => {
+              event.stopPropagation();
+              handleEdit();
+            }}
+          >
+            Edit
+          </MenuItem>
+          <MenuItem
+            onClick={(event) => {
+              event.stopPropagation();
+              handleDelete();
+            }}
+          >
+            Delete
+          </MenuItem>
+        </Menu>
+
+        {/* Edit Dialog */}
         <Dialog open={isEditing} onClose={handleDialogClose} fullWidth maxWidth="sm">
           <DialogTitle>Edit Pizza</DialogTitle>
           <DialogContent>
@@ -239,7 +253,6 @@ const CustomItems = () => {
                 sx={{ marginBottom: '20px' }}
               />
 
-              {/* Multiple-choice ingredient selection */}
               <FormControl fullWidth margin="normal">
                 <InputLabel id="ingredient-select-label">Select Ingredients</InputLabel>
                 <Select
@@ -261,7 +274,6 @@ const CustomItems = () => {
                 </Select>
               </FormControl>
 
-              {/* Display final price */}
               <Typography variant="h6" sx={{ marginTop: '10px' }}>
                 Final Price: ${finalPrice.toFixed(2)}
               </Typography>

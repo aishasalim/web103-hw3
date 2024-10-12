@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Container, Typography, FormControl, InputLabel, Select, MenuItem, Button, Checkbox, ListItemText, Box, Grid } from '@mui/material';
 import axios from 'axios';
 import TopBar from './TopBar';
+import { useNavigate } from 'react-router-dom';
+
 
 const App = () => {
   const [ingredients, setIngredients] = useState([]);
   const [selectedIngredients, setSelectedIngredients] = useState([]);
   const [pizzaName, setPizzaName] = useState('');
   const [finalPrice, setFinalPrice] = useState(5.00); // Initial price
+  const navigate = useNavigate();
 
   // Fetch ingredients from the API
   useEffect(() => {
@@ -40,21 +43,35 @@ const handleIngredientChange = (event) => {
 // Submit the pizza customization
 const handleSubmit = async (event) => {
   event.preventDefault();
+
+  if (!pizzaName.trim()) {
+    alert('Pizza name cannot be empty.');
+    return;
+  }
+
   try {
     const response = await axios.post('http://localhost:5001/api/custom-pizza', {
       name: pizzaName,
       ingredient_names: selectedIngredients,
-      final_price: 5.00 + finalPrice, // Make sure to include final price here if necessary
+      final_price: finalPrice,
     });
     console.log('Custom pizza created:', response.data);
-    // Reset form fields after successful submission
+
+    // Extract the new pizza's ID from the response
+    const newPizzaId = response.data.customPizza.id;
+
+    // Redirect to the new pizza's detail page
+    navigate(`/itemdetail/${newPizzaId}`);
+
+    // Optionally reset form fields
     setPizzaName('');
     setSelectedIngredients([]);
-    setFinalPrice(5.00); // Reset to initial price
+    setFinalPrice(5.0); // Reset to initial price
   } catch (error) {
     console.error('Error creating custom pizza:', error);
   }
 };
+
 
 
   // Group ingredients by type

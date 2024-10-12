@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'; // Ensure this is imported
 import App from './App.jsx';
 import CustomItems from './customItems.jsx';
+import ItemDetails from './ItemDetails.jsx';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from './theme';
 
@@ -15,6 +16,7 @@ root.render(
       <Routes>
         <Route path="/" element={<App />} /> 
         <Route path="/customitems" element={<CustomItems />} /> 
+        <Route path="/itemdetail/:id" element={<ItemDetails />} />
       </Routes>
     </Router>
   </StrictMode>,
